@@ -2,11 +2,9 @@ const { Telegraf } = require('telegraf');
 const express = require('express');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Telegram Bot Token (အဆင်သင့်ထည့်ပြီး)
-const bot = new Telegraf('8951168764:AAELuCMhE5gY8m7-GtAkuKOGgNc1XeDYF2s');
-
-// Gemini API Key (အဆင်သင့်ထည့်ပြီး)
-const genAI = new GoogleGenerativeAI("AQ.Ab8RN6IBHU8nVwRXhUdtpuDaKKjpclG9iEpX3CdizPBLCaUTtA"); 
+// Environment Variables စနစ်သုံးပြီး Token နှင့် Key များကို လုံခြုံအောင် ယူခြင်း
+const bot = new Telegraf(process.env.BOT_TOKEN || '8951168764:AAELuCMhE5gY8m7-GtAkuKOGgNc1XeDYF2s');
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY || 'AQ.Ab8RN6IBHU8nVwRXhUdtpuDaKKjpclG9iEpX3CdizPBLCaUTtA'); 
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const app = express();
@@ -26,14 +24,14 @@ bot.on('message', async (ctx) => {
     if (!ctx.message || !ctx.message.text) return;
     const msgText = ctx.message.text.trim();
 
-    // ---- ၁။ TON Wallet စစ်ဆေးခြင်း ----
+    // 1. TON Wallet Check
     const matchTon = msgText.match(tonRegex);
     if (matchTon) {
         const tonAddress = matchTon[0];
         return ctx.replyWithMarkdownV2(`💎 *TON Address:*\n\`${escapeMarkdown(tonAddress)}\``, { reply_to_message_id: ctx.message.message_id });
     }
 
-    // ---- ၂။ Calculator တွက်ချက်ခြင်း ----
+    // 2. Calculator Check
     if (calcRegex.test(msgText) && /[+\-*/]/.test(msgText)) {
         try {
             const result = new Function(`return ${msgText}`)();
@@ -43,17 +41,16 @@ bot.on('message', async (ctx) => {
         } catch (e) {}
     }
 
-    // ---- ၃။ Gemini AI (etpepe ဟု စမှသာ အလုပ်လုပ်မည်) ----
+    // 3. Gemini AI (etpepe Prefix)
     if (msgText.toLowerCase().startsWith('etpepe')) {
-        const question = msgText.substring(6).trim(); // "etpepe" ကို ဖြတ်ထုတ်ပြီး မေးခွန်းသက်သက်ယူခြင်း
+        const question = msgText.substring(6).trim(); 
         
         if (!question) {
-            return ctx.reply("🤔 etpepe ရဲ့နောက်မှာ မေးချင်တဲ့ မေးခွန်းကို တစ်ခါတည်း ရိုက်ထည့်ပေးပါဗျာ။ \n(ဥပမာ - etpepe နာမည်ကြီးစာအုပ်တွေ ပြောပြပါ)", { reply_to_message_id: ctx.message.message_id });
+            return ctx.reply("🤔 etpepe ရဲ့နောက်မှာ မေးချင်တဲ့ မေးခွန်းကို တစ်ခါတည်း ရိုက်ထည့်ပေးပါဗျာ။", { reply_to_message_id: ctx.message.message_id });
         }
 
         try {
-            await ctx.sendChatAction('typing'); // Bot က စာရိုက်နေသလို ပုံစံပြရန်
-            
+            await ctx.sendChatAction('typing'); 
             const result = await model.generateContent(question);
             const response = await result.response;
             const text = response.text();
