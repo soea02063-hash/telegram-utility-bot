@@ -14,11 +14,39 @@ const calcRegex = /^[0-9+\-*/().\s]+$/;
 // ---- Username Database ----
 const userCache = {};
 
-// MarkdownV2 အတွက် Special Characters များကို စိတ်ချရအောင် ပိတ်ပေးမည့် Function
+// MarkdownV2 အတွက် Special Characters များကို ပိတ်ပေးမည့် Function
 function escapeMarkdown(text) {
     if (!text) return '';
     return String(text).replace(/[_*\[\]()~`>#+-=|{}.!]/g, '\\$&');
 }
+
+// ---- Pin Link Checker (/pin သို့မဟုတ် pin စာသား) ----
+async function checkLatestPinLink(ctx) {
+    try {
+        const chat = await ctx.telegram.getChat(ctx.chat.id);
+        if (!chat.pinned_message) {
+            return ctx.reply("❌ ဒီ Group မှာ ဘာမှ Pin လုပ်မထားပါဘူး။");
+        }
+
+        const msg = chat.pinned_message;
+        const text = msg.text || msg.caption || "";
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const links = text.match(urlRegex);
+
+        if (links) {
+            // နောက်ဆုံး Pin လုပ်ထားတဲ့ စာထဲက ပထမဆုံး Link ကို ယူမည်
+            return ctx.reply(`📌 *နောက်ဆုံး Pin လုပ်ထားသော Link:* \n${links[0]}`);
+        } else {
+            return ctx.reply("ℹ️ နောက်ဆုံး Pin လုပ်ထားတဲ့ စာထဲမှာ Link မတွေ့ပါဘူး။");
+        }
+    } catch (err) {
+        console.log("Pin Error:", err);
+        ctx.reply("❌ Error ဖြစ်နေပါတယ်၊ Bot ကို Group Admin ပေးထားကြောင်း သေချာပါစေ။");
+    }
+}
+
+// /pin Command အတွက်
+bot.command('pin', checkLatestPinLink);
 
 // ---- User ID & Info Checker (/id) ----
 bot.command('id', async (ctx) => {
@@ -51,7 +79,7 @@ bot.command('id', async (ctx) => {
     }
 });
 
-// ---- Message Listener ----
+// ---- Message Listener (အခြား Feature များအားလုံး) ----
 bot.on('message', async (ctx) => {
     try {
         if (!ctx.message || !ctx.message.from) return;
@@ -77,6 +105,11 @@ bot.on('message', async (ctx) => {
 
         if (!ctx.message.text) return;
         const msgText = ctx.message.text.trim();
+
+        // ---- Pin ဟု စာသားသက်သက် ရိုက်ပါက Link ရှာပေးမည့်စနစ် ----
+        if (msgText.toLowerCase() === 'pin') {
+            return checkLatestPinLink(ctx);
+        }
 
         // ---- TON Address Detected ----
         const matchTon = msgText.match(tonRegex);
