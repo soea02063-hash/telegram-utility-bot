@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is active!'));
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
+// Regex ကို ၄၆ လုံးထက် ရှည်ရင်လည်း ဖတ်နိုင်အောင် ပြင်ဆင်ထားသည်
 const tonRegex = /(EQ[a-zA-Z0-9_-]{46,}|UQ[a-zA-Z0-9_-]{46,})/;
 const calcRegex = /^[0-9+\-*/().\s]+$/;
 
@@ -19,14 +20,12 @@ bot.on('message', async (ctx) => {
     const matchTon = msgText.match(tonRegex);
     if (matchTon) {
         const tonAddress = matchTon[0];
-        const replyMessage = `💎 <b>TON Address Detected:</b>\n<code>${tonAddress}</code>`;
         
-        // နှိပ်လိုက်ရင် အပေါ်က စာသားကို အလွယ်တကူ Copy ကူးနိုင်အောင် စီစဉ်ခြင်း
-        return ctx.replyWithHTML(replyMessage, {
-            reply_to_message_id: ctx.message.message_id,
-            ...Markup.inlineKeyboard([
-                [Markup.button.callback('📋 Click to Copy Address', 'copy_alert')]
-            ])
+        // MarkdownV2 စနစ်အရ စာသားကို ကလစ်နှိပ်ရုံဖြင့် တန်း Copy ရအောင်လုပ်ခြင်း
+        const replyMessage = `💎 *TON Address Detected:*\n\`${tonAddress}\``;
+        
+        return ctx.replyWithMarkdownV2(replyMessage, {
+            reply_to_message_id: ctx.message.message_id
         });
     }
 
@@ -35,24 +34,18 @@ bot.on('message', async (ctx) => {
         try {
             const result = new Function(`return ${msgText}`)();
             if (result !== undefined && !isNaN(result)) {
-                const replyText = `🧮 <b>Calculation Result:</b>\n<code>${result}</code>`;
                 
-                return ctx.replyWithHTML(replyText, {
-                    reply_to_message_id: ctx.message.message_id,
-                    ...Markup.inlineKeyboard([
-                        [Markup.button.callback('📋 Click to Copy Result', 'copy_alert')]
-                    ])
+                // ရလဒ်ကို နှိပ်လိုက်တာနဲ့ ဖုန်းထဲ တန်းကော်ပီဝင်သွားအောင် လုပ်ခြင်း
+                const replyText = `🧮 *Calculation Result:*\n\`${result}\``;
+                
+                return ctx.replyWithMarkdownV2(replyText, {
+                    reply_to_message_id: ctx.message.message_id
                 });
             }
         } catch (error) {
             console.log("Calculation error:", error);
         }
     }
-});
-
-// ခလုတ်နှိပ်လိုက်ရင် ပေါ်လာမယ့် Alert စာတန်း
-bot.action('copy_alert', (ctx) => {
-    return ctx.answerCbQuery('💡 အပေါ်က စာသားကွက်လေးကို ဖိပြီး Copy ကူးယူနိုင်ပါသည်ဗျာ!', { show_alert: true });
 });
 
 bot.launch();
