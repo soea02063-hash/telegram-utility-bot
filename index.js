@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is active!'));
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-// {46,} ပြင်လိုက်သဖြင့် စာလုံးအရှည်ကြီး ကပ်ရိုက်လည်း အကုန်ဖတ်ပေးပါမည်
 const tonRegex = /(EQ[a-zA-Z0-9_-]{46,}|UQ[a-zA-Z0-9_-]{46,})/;
 const calcRegex = /^[0-9+\-*/().\s]+$/;
 
@@ -22,11 +21,11 @@ bot.on('message', async (ctx) => {
         const tonAddress = matchTon[0];
         const replyMessage = `💎 <b>TON Address Detected:</b>\n<code>${tonAddress}</code>`;
         
-        // အောက်ခြေတွင် အစိမ်းရောင် ကော်ပီခလုတ် ထည့်ခြင်း
+        // နှိပ်လိုက်ရင် အပေါ်က စာသားကို အလွယ်တကူ Copy ကူးနိုင်အောင် စီစဉ်ခြင်း
         return ctx.replyWithHTML(replyMessage, {
             reply_to_message_id: ctx.message.message_id,
             ...Markup.inlineKeyboard([
-                [Markup.button.copyText(`📋 ${tonAddress}`, tonAddress)]
+                [Markup.button.callback('📋 Click to Copy Address', 'copy_alert')]
             ])
         });
     }
@@ -36,13 +35,12 @@ bot.on('message', async (ctx) => {
         try {
             const result = new Function(`return ${msgText}`)();
             if (result !== undefined && !isNaN(result)) {
-                const replyText = `🧮 <b>Calculation Result:</b>\n<code>${msgText} = ${result}</code>`;
+                const replyText = `🧮 <b>Calculation Result:</b>\n<code>${result}</code>`;
                 
-                // တွက်ချက်မှုရလဒ်အတွက်ပါ အစိမ်းရောင် ကော်ပီခလုတ် ထည့်ခြင်း
                 return ctx.replyWithHTML(replyText, {
                     reply_to_message_id: ctx.message.message_id,
                     ...Markup.inlineKeyboard([
-                        [Markup.button.copyText(`📋 ${result}`, String(result))]
+                        [Markup.button.callback('📋 Click to Copy Result', 'copy_alert')]
                     ])
                 });
             }
@@ -50,6 +48,11 @@ bot.on('message', async (ctx) => {
             console.log("Calculation error:", error);
         }
     }
+});
+
+// ခလုတ်နှိပ်လိုက်ရင် ပေါ်လာမယ့် Alert စာတန်း
+bot.action('copy_alert', (ctx) => {
+    return ctx.answerCbQuery('💡 အပေါ်က စာသားကွက်လေးကို ဖိပြီး Copy ကူးယူနိုင်ပါသည်ဗျာ!', { show_alert: true });
 });
 
 bot.launch();
