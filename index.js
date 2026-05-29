@@ -1,4 +1,4 @@
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf } = require('telegraf');
 const express = require('express');
 
 const bot = new Telegraf('8951168764:AAELuCMhE5gY8m7-GtAkuKOGgNc1XeDYF2s');
@@ -8,10 +8,47 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is active!'));
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-// Regex ကို ၄၆ လုံးထက် ရှည်ရင်လည်း ဖတ်နိုင်အောင် ပြင်ဆင်ထားသည်
 const tonRegex = /(EQ[a-zA-Z0-9_-]{46,}|UQ[a-zA-Z0-9_-]{46,})/;
 const calcRegex = /^[0-9+\-*/().\s]+$/;
 
+// ---- User ID & Info Checker (/id) ----
+bot.command('id', async (ctx) => {
+    let targetUser;
+
+    // အကယ်၍ အခြားသူစာကို Reply ပြန်ပြီး စစ်ဆေးလျှင်
+    if (ctx.message.reply_to_message) {
+        targetUser = ctx.message.reply_to_message.from;
+    } else {
+        // Reply မပြန်ဘဲ ရိုက်လျှင် မိမိအကောင့်ကို ပြသမည်
+        targetUser = ctx.message.from;
+    }
+
+    if (!targetUser) return;
+
+    const userId = targetUser.id;
+    const firstName = targetUser.first_name || 'No Name';
+    const lastName = targetUser.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    const username = targetUser.username ? `@${targetUser.username}` : 'None';
+    const isPremium = targetUser.is_premium ? 'Active  (Yes)' : 'No';
+    const isBot = targetUser.is_bot ? 'Yes' : 'No';
+
+    // ပုံစံသွင်းပြီး စာသားထုတ်ပေးခြင်း (Tap to copy စနစ်ပါဝင်သည်)
+    const infoMessage = `
+👤 *User Information:*
+\- *ID:* \`${userId}\` \(Tap to copy\)
+\- *Name:* _${fullName}_
+\- *Username:* ${username}
+\- *Premium:* ${isPremium}
+\- *Is Bot:* ${isBot}
+    `.trim();
+
+    return ctx.replyWithMarkdownV2(infoMessage, {
+        reply_to_message_id: ctx.message.message_id
+    });
+});
+
+// ---- Message Listener (TON & Calculator) ----
 bot.on('message', async (ctx) => {
     if (!ctx.message || !ctx.message.text) return;
     const msgText = ctx.message.text.trim();
@@ -20,10 +57,7 @@ bot.on('message', async (ctx) => {
     const matchTon = msgText.match(tonRegex);
     if (matchTon) {
         const tonAddress = matchTon[0];
-        
-        // MarkdownV2 စနစ်အရ စာသားကို ကလစ်နှိပ်ရုံဖြင့် တန်း Copy ရအောင်လုပ်ခြင်း
         const replyMessage = `💎 *TON Address Detected:*\n\`${tonAddress}\``;
-        
         return ctx.replyWithMarkdownV2(replyMessage, {
             reply_to_message_id: ctx.message.message_id
         });
@@ -34,10 +68,7 @@ bot.on('message', async (ctx) => {
         try {
             const result = new Function(`return ${msgText}`)();
             if (result !== undefined && !isNaN(result)) {
-                
-                // ရလဒ်ကို နှိပ်လိုက်တာနဲ့ ဖုန်းထဲ တန်းကော်ပီဝင်သွားအောင် လုပ်ခြင်း
                 const replyText = `🧮 *Calculation Result:*\n\`${result}\``;
-                
                 return ctx.replyWithMarkdownV2(replyText, {
                     reply_to_message_id: ctx.message.message_id
                 });
